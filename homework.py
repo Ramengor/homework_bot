@@ -57,6 +57,7 @@ def check_tokens():
 def send_message(bot, message):
     """Отправляет сообщение в Telegram-чат."""
     try:
+        logging.debug(f'Отправка сообщения в чат {message}')
         bot.send_message(TELEGRAM_CHAT_ID, message)
         logging.debug(f'Сообщение отправлено в чат {message}')
     except Exception as error:
@@ -69,34 +70,32 @@ def get_api_answer(timestamp):
     try:
         response = requests.get(ENDPOINT, headers=HEADERS, params=params)
         if response.status_code != HTTPStatus.OK:
-            logging.error(
-                f'Эндпоинт {ENDPOINT} недоступен. '
-                f'Код ответа API: {response.status_code}'
-            )
             raise APIError(
                 f'Эндпоинт {ENDPOINT} недоступен. '
                 f'Код ответа: {response.status_code}'
             )
-        logging.info(f'Получен ответ от API: {response}')
         return response.json()
     except requests.RequestException as req_err:
-        logging.error(f'Ошибка при запросе к API: {req_err}')
         raise APIError(f'Ошибка при запросе к API: {req_err}')
 
 
 def check_response(response):
     """Проверяет корректность ответа API."""
     if not isinstance(response, dict):
-        logging.error('Ответ API должен быть словарём')
-        raise TypeError('Ответ API должен быть словарём')
-    if 'homeworks' not in response or 'current_date' not in response:
-        logging.error('В ответе API отсутствуют необходимые ключи')
-        raise TypeError('В ответе API отсутствуют необходимые ключи')
-    if not isinstance(response['homeworks'], list):
-        logging.error('Поле "homeworks" должно быть списком')
-        raise TypeError('Поле "homeworks" должно быть списком')
+        raise TypeError(f'Ответ API должен быть словарём, '
+                        f'получен {type(response)}'
+                        )
+    if 'homeworks' not in response:
+        raise KeyError('Поле "homeworks" отсутствует')
+    if 'current_date' not in response:
+        raise KeyError('Поле "current_date" отсутствует')
+    homeworks = response['homeworks']
+    if not isinstance(homeworks, list):
+        raise TypeError(f'Поле "homeworks" должно быть списком, '
+                        f'получен {type(homeworks)}'
+                        )
     logging.debug('Ответ API прошёл проверку')
-    return response['homeworks']
+    return homeworks
 
 
 def parse_status(homework):
@@ -104,12 +103,12 @@ def parse_status(homework):
     homework_name = homework.get('homework_name')
     homework_status = homework.get('status')
 
-    if homework_name is None or homework_status is None:
-        logging.error('В ответе отсутствуют необходимые поля')
-        raise InvalidAPIResponseError('В ответе отсутствуют необходимые поля')
+    if 'homework_name' not in homework:
+        raise InvalidAPIResponseError('Поле "homework_name" отсутствует')
+    if 'status' not in homework:
+        raise InvalidAPIResponseError('Поле "status" отсутствует')
 
     if homework_status not in HOMEWORK_VERDICTS:
-        logging.error(f'Неожиданный статус работы: {homework_status}')
         raise UnknownHomeworkStatusError(
             f'Неизвестный статус работы: {homework_status}'
         )
@@ -143,7 +142,8 @@ def main():
             message = f'Сбой в работе программы: {error}'
             logging.error(message)
             send_message(bot, message)
-        time.sleep(RETRY_PERIOD)
+        finally:
+            time.sleep(RETRY_PERIOD)
 
 
 if __name__ == '__main__':
