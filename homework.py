@@ -100,13 +100,13 @@ def check_response(response):
 
 def parse_status(homework):
     """Извлекает статус домашней работы."""
-    homework_name = homework.get('homework_name')
-    homework_status = homework.get('status')
-
     if 'homework_name' not in homework:
         raise InvalidAPIResponseError('Поле "homework_name" отсутствует')
     if 'status' not in homework:
         raise InvalidAPIResponseError('Поле "status" отсутствует')
+
+    homework_name = homework['homework_name']
+    homework_status = homework['status']
 
     if homework_status not in HOMEWORK_VERDICTS:
         raise UnknownHomeworkStatusError(
