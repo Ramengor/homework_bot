@@ -7,7 +7,8 @@ import requests
 from dotenv import load_dotenv
 from telebot import TeleBot
 
-from exceptions import *
+from exceptions import (BotTokenException, APIError, InvalidAPIResponseError,
+                        UnknownHomeworkStatusError)
 
 load_dotenv()
 
@@ -47,9 +48,9 @@ def check_tokens():
     }
     missing_tokens = [name for name, value in tokens.items() if not value]
     if missing_tokens:
-        logging.critical(
-            f"Не все переменные окружения доступны: {', '.join(missing_tokens)}"
-        )
+        logging.critical(f"Не все переменные окружения доступны: "
+                         f"{', '.join(missing_tokens)}"
+                         )
         raise BotTokenException('Не все переменные окружения доступны.')
 
 
@@ -114,7 +115,7 @@ def parse_status(homework):
         )
 
     verdict = HOMEWORK_VERDICTS[homework_status]
-    logging.info(f'Сформировано сообщение о статусе')
+    logging.info(f'Сформировано сообщение о статусе: {homework_name}')
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
 
 
